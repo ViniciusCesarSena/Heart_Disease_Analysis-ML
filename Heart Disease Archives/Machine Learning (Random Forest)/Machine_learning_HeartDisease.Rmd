@@ -1,0 +1,261 @@
+---
+title: "Apresentação de ML"
+author: "Vinícius césar"
+date: "2024-06-12"
+output: powerpoint_presentation
+---
+
+### Dicionário de Dados
+
+| Nome da Variável | Tipo     | Descrição                                                                                                                        | Valores Possíveis                                                                                   |
+|------------------|----------|----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| age              | Numérico | Idade do paciente.                                                                                                               | Valores inteiros representando a idade em anos.                                                     |
+| sex              | Numérico | Sexo do paciente.                                                                                                                | 1: Masculino, 0: Feminino                                                                           |
+| cp               | Numérico | Tipo de dor no peito experimentada pelo paciente.                                                                                | 0: Angina típica, 1: Angina atípica, 2: Dor não-anginosa, 3: Assintomático                          |
+| trestbps         | Numérico | Pressão arterial em repouso (mm Hg) ao entrar no hospital.                                                                       | Valores inteiros representando a pressão arterial em mm Hg.                                         |
+| chol             | Numérico | Colesterol sérico em mg/dl.                                                                                                      | Valores inteiros representando o nível de colesterol.                                               |
+| fbs              | Numérico | Glicemia em jejum \> 120 mg/dl.                                                                                                  | 1: Verdadeiro, 0: Falso                                                                             |
+| restecg          | Numérico | Resultados do eletrocardiograma em repouso.                                                                                      | 0: Normal, 1: Anormalidade na onda ST-T, 2: Hipertrofia ventricular esquerda provável ou definitiva |
+| thalach          | Numérico | Frequência cardíaca máxima alcançada durante o teste.                                                                            | Valores inteiros representando a frequência cardíaca máxima.                                        |
+| exang            | Numérico | Angina induzida por exercício.                                                                                                   | 1: Sim, 0: Não                                                                                      |
+| oldpeak          | Numérico | Depressão do segmento ST induzida pelo exercício em relação ao repouso.                                                          | Valores numéricos representando a depressão do segmento ST.                                         |
+| slope            | Numérico | Inclinação do segmento ST de pico do exercício.                                                                                  | 0: Ascendente, 1: Plano, 2: Descendente                                                             |
+| ca               | Numérico | Número de vasos principais (0-3) coloridos por fluoroscopia.                                                                     | Valores inteiros de 0 a 3 representando o número de vasos.                                          |
+| thal             | Numérico | Talassemia (um tipo de distúrbio do sangue).                                                                                     | 1: Normal, 2: Defeito fixo, 3: Defeito reversível                                                   |
+| target           | Numérico | Diagnóstico de doença cardíaca (variável dependente), onde 1 representa a presença de doença cardíaca e 0 representa a ausência. | 1: Presença de doença cardíaca, 0: Ausência de doença cardíaca                                      |
+
+#### Chunk 1: Configuração Inicial
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+-   **knitr::opts_chunk\$set(echo = TRUE):** Esta linha de código configura o ambiente knitr, que é usado para gerar documentos dinâmicos em R. O parâmetro `echo = TRUE` indica que o código R será exibido nos resultados finais, permitindo que os leitores vejam o código juntamente com a saída gerada.
+
+-   **include=FALSE:** Esta opção faz com que este chunk de configuração não seja incluído na saída do documento final. Assim, o leitor não verá este código de configuração, mas ele afetará os chunks subsequentes.
+
+#### Chunk 2: Instalação e Carregamento de Pacotes
+
+```{r}
+# Instalar e carregar pacman
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(randomForest, e1071, caTools, pROC, caret, ggplot2, plotROC)
+```
+
+-   **if (!require("pacman")) install.packages("pacman"):** Verifica se o pacote `pacman` está instalado. Se não estiver, instala-o. `pacman` é um pacote conveniente para carregar e instalar outros pacotes.
+
+-   **pacman::p_load(...):** Usa `pacman` para carregar vários pacotes de uma vez: `randomForest` (para criar modelos de floresta aleatória), `e1071` (contém ferramentas para aprendizado de máquina), `caTools` (fornece funções para manipulação de dados), `pROC` (para análise de curvas ROC), `caret` (para treinamento e avaliação de modelos), `ggplot2` (para visualização de dados) e `plotROC` (para plotagem de curvas ROC).
+
+#### Chunk 3: Carregamento e Preparação dos Dados
+
+```{r}
+# Carregar os dados
+heart_disease <- read.csv('Heart_Disease_Prediction.csv')
+
+# Converter variáveis categóricas
+heart_disease$Chest.pain.type <- as.factor(heart_disease$Chest.pain.type)
+heart_disease$EKG.results <- as.factor(heart_disease$EKG.results)
+heart_disease$Slope.of.ST <- as.factor(heart_disease$Slope.of.ST)
+heart_disease$Thallium <- as.factor(heart_disease$Thallium)
+heart_disease$Heart.Disease <- as.factor(ifelse(heart_disease$Heart.Disease == 'Presence', 1, 0))
+```
+
+-   **heart_disease \<- read.csv('Heart_Disease_Prediction.csv'):** Carrega os dados de um arquivo CSV chamado `Heart_Disease_Prediction.csv` em um dataframe chamado `heart_disease`.
+
+-   **Conversão de Variáveis Categóricas:**
+
+    -   **as.factor(...):** Converte variáveis específicas em fatores, que são necessários para muitos modelos de aprendizado de máquina em R. Aqui, `Chest.pain.type`, `EKG.results`, `Slope.of.ST`, `Thallium` são convertidos em fatores.
+
+    -   **heart_disease\$Heart.Disease \<- as.factor(ifelse(...)):** Converte a variável `Heart.Disease` em um fator binário. Se o valor for 'Presence', ele é convertido para 1; caso contrário, é convertido para 0. Isso facilita o tratamento da variável como uma resposta binária no modelo.
+
+#### Chunk 4: Divisão dos Dados em Conjuntos de Treinamento e Teste
+
+```{r}
+# Dividir os dados em conjunto de treinamento e teste
+set.seed(42)
+split <- sample.split(heart_disease$Heart.Disease, SplitRatio = 0.8)
+train_set <- subset(heart_disease, split == TRUE)
+test_set <- subset(heart_disease, split == FALSE)
+```
+
+-   **set.seed(42):** Define a semente para o gerador de números aleatórios. Isso garante que a divisão dos dados seja reprodutível. A escolha do número 42 é arbitrária, mas importante para garantir consistência em execuções futuras.
+
+-   **split \<- sample.split(...):** Usa a função `sample.split` do pacote `caTools` para dividir os dados com base na variável `Heart.Disease`. O parâmetro `SplitRatio = 0.8` indica que 80% dos dados serão usados para treinamento e 20% para teste.\
+
+-   **train_set \<- subset(...):** Cria o conjunto de treinamento selecionando as observações onde `split` é TRUE.
+
+-   **test_set \<- subset(...):** Cria o conjunto de teste selecionando as observações onde `split` é FALSE.
+
+#### Chunk 5: Treinamento e Avaliação do Modelo
+
+```{r}
+# Treinar o modelo
+model <- randomForest(Heart.Disease ~ ., data=train_set, importance=TRUE, ntree=100)
+
+# Avaliar o modelo
+pred <- predict(model, newdata=test_set)
+conf_matrix <- confusionMatrix(pred, test_set$Heart.Disease)
+print(conf_matrix)
+```
+
+-   **model \<- randomForest(...):** Treina um modelo de floresta aleatória usando a função `randomForest`. O modelo prevê a variável `Heart.Disease` usando todas as outras variáveis (`~ .`). O parâmetro `importance=TRUE` indica que a importância das variáveis será calculada, e `ntree=100` especifica que 100 árvores serão usadas na floresta.
+
+-   **pred \<- predict(...):** Faz previsões usando o conjunto de teste.
+
+-   **confusionMatrix(...):** Calcula a matriz de confusão para avaliar o desempenho do modelo, comparando as previsões (`pred`) com os valores reais (`test_set$Heart.Disease`).
+
+-   **print(conf_matrix):** Exibe a matriz de confusão.
+
+### Métricas de Desempenho
+
+**Acurácia (Accuracy)**: 0.8333 (83.33%) - A proporção total de predições corretas. **Intervalo de**
+
+**Confiança de 95% (95% CI)**: (0.7071, 0.9208) - Intervalo dentro do qual podemos dizer com 95% de confiança que a verdadeira acurácia do modelo está.
+
+**No Information Rate**: 0.5556 - A taxa de acerto que se obteria sempre escolhendo a classe majoritária.
+
+**P-Value [Acc \> NIR]**: 1.532e-05 - A probabilidade de obter a acurácia observada se o modelo não fosse melhor que a escolha aleatória. Um valor baixo indica que o modelo é significativamente melhor que a escolha aleatória.
+
+**Kappa**: 0.6553 - Medida de concordância entre predições e classes verdadeiras, ajustada para o acaso.
+
+**McNemar's Test P-Value**: 0.1824 - Teste de simetria na matriz de confusão, usado para avaliar a significância das discordâncias. Valor acima de 0.05 indica que as discordâncias não são significativas.
+
+### Sensibilidade e Especificidade
+
+**Sensibilidade (Sensitivity)**: 0.9333 (93.33%) - Proporção de verdadeiros positivos corretamente identificados (capacidade de identificar corretamente a classe positiva).
+
+**Especificidade (Specificity)**: 0.7083 (70.83%) - Proporção de verdadeiros negativos corretamente identificados (capacidade de identificar corretamente a classe negativa).
+
+### Valores Preditivos
+
+**Valor Preditivo Positivo (Pos Pred Value)**: 0.8000 (80%) - Proporção de predições positivas que são verdadeiras positivas.
+
+**Valor Preditivo Negativo (Neg Pred Value)**: 0.8947 (89.47%) - Proporção de predições negativas que são verdadeiras negativas.
+
+### Prevalência e Taxas de Detecção
+
+**Prevalência (Prevalence)**: 0.5556 - Proporção de casos positivos na população.
+
+**Taxa de Detecção (Detection Rate)**: 0.5185 - Proporção de verdadeiros positivos no total de casos.
+
+**Detecção de Prevalência (Detection Prevalence)**: 0.6481 - Proporção de predições positivas no total de casos.
+
+### Acurácia Balanceada
+
+**Balanced Accuracy**: 0.8208 - Média da sensibilidade e especificidade, útil para avaliar modelos com classes desbalanceadas.
+
+Essas métricas indicam que o modelo tem uma boa acurácia e sensibilidade, com um desempenho razoável em termos de especificidade e valores preditivos. A alta sensibilidade sugere que o modelo é bom em detectar a classe positiva, enquanto a acurácia balanceada indica um desempenho consistente entre as classes.
+
+#### Chunk 6: Curva ROC e Cálculo da AUC
+
+```{r}
+# Gerar a curva ROC e calcular a AUC
+pred_prob <- predict(model, newdata=test_set, type='prob')[,2]
+roc_obj <- roc(test_set$Heart.Disease, pred_prob)
+auc_value <- auc(roc_obj)
+print(auc_value)
+```
+
+-   **pred_prob \<- predict(..., type='prob')[,2]:** Obtém as probabilidades preditas para a classe positiva (doença cardíaca presente) usando o modelo. O parâmetro `type='prob'` faz com que a função `predict` retorne as probabilidades para ambas as classes, e `[,2]` seleciona a coluna correspondente à classe positiva.
+
+-   **roc_obj \<- roc(...):** Cria um objeto ROC usando a função `roc` do pacote `pROC`. Compara as classes reais (`test_set$Heart.Disease`) com as probabilidades preditas (`pred_prob`).
+
+-   **auc_value \<- auc(roc_obj):** Calcula a área sob a curva ROC (AUC) usando a função `auc`. A AUC é uma medida de quão bem o modelo diferencia entre as classes.
+
+-   **print(auc_value):** Exibe o valor da AUC.
+
+#### Chunk 7: Visualização da Matriz de Confusão e Curva ROC
+
+```{r}
+# Gerar matriz de confusão
+conf_matrix$table
+
+# Gerar a curva ROC e calcular a AUC
+pred_prob <- predict(model, newdata=test_set, type='prob')[,2]
+roc_obj <- roc(test_set$Heart.Disease, pred_prob)
+auc(roc_obj)
+
+# Plotar a curva ROC
+plot(roc_obj, col='blue', main='ROC Curve')
+abline(a=0, b=1, col='red', lty=2)
+```
+
+### Análise da Curva ROC / AUC = 0.9139
+
+**Taxa de Verdadeiros Positivos (Sensibilidade ou Recall):**
+
+-   **Eixo Y:** Representa a sensibilidade, que é a proporção de positivos reais corretamente identificados pelo modelo (TPR = TP / (TP + FN)).
+
+**Taxa de Falsos Positivos (1 - Especificidade):**
+
+-   **Eixo X:** Representa a taxa de falsos positivos, que é a proporção de negativos reais incorretamente identificados como positivos pelo modelo (FPR = FP / (FP + TN)).
+
+**Linha Diagonal (Linha de Chance):**
+
+-   A linha diagonal de (0,0) a (1,1) representa o desempenho de um classificador aleatório. Qualquer ponto nessa linha indica que o classificador não tem capacidade de discriminação, performando igualmente bem que uma adivinhação aleatória.
+
+**Forma da Curva:**
+
+-   A linha azul representa a curva ROC do classificador em questão. A curva começa em (0,0) e idealmente se move em direção a (0,1), cobrindo o canto superior esquerdo, e depois se move horizontalmente para (1,1). Quanto mais próxima a curva segue a borda esquerda e depois a borda superior, melhor é o desempenho do classificador.
+
+**Sensibilidade (Taxa de Verdadeiros Positivos):**
+
+-   Valores altos de sensibilidade ao longo do eixo Y indicam que o classificador é bom em identificar positivos reais.
+
+**Especificidade (Taxa de Verdadeiros Negativos):**
+
+-   Valores ao longo do eixo X mostram a proporção de negativos corretamente identificados. Uma curva mais próxima do eixo Y implica uma baixa taxa de falsos positivos e alta especificidade.
+
+### Métricas de Desempenho:
+
+**Área Sob a Curva (AUC):**
+
+-   AUC é um valor escalar único para resumir o desempenho geral do classificador. Um classificador perfeito terá uma AUC de 1.0, enquanto um classificador sem poder discriminativo terá uma AUC de 0.5.
+
+-   A AUC fornecida é 0.9139, o que sugere um desempenho elevado do classificador.
+
+A curva ROC mostra que o classificador possui alta sensibilidade e especificidade, pois está significativamente acima da linha de chance (diagonal). Isso sugere que o modelo tem um bom desempenho em distinguir entre as duas classes.
+
+```{r}
+# Plotar a matriz de confusão
+fourfoldplot(conf_matrix$table, color = c("#CC6666", "#99CC99"),
+             conf.level = 0, margin = 1, main = "Confusion Matrix")
+
+```
+
+### Análise da Matriz de confusão:
+
+-   **True Positives (TP)**: 17 (Referência: 1, Predição: 1) - Casos corretamente classificados como positivos.
+-   **True Negatives (TN)**: 28 (Referência: 0, Predição: 0) - Casos corretamente classificados como negativos.
+-   **False Positives (FP)**: 7 (Referência: 0, Predição: 1) - Casos incorretamente classificados como positivos.
+-   **False Negatives (FN)**: 2 (Referência: 1, Predição: 0) - Casos incorretamente classificados como negativos.
+
+#### Chunk 8: Visualização de Previsões no Conjunto de Teste
+
+```{r}
+# Adicionar as previsões ao conjunto de dados de teste
+test_set$Prediction <- as.factor(predict(model, newdata=test_set))
+
+# Criar o gráfico de dispersão
+ggplot(test_set, aes(x=
+
+Age, y=BP, color=Prediction)) +
+  geom_point(alpha=0.7) +
+  labs(title="Dispersão de Idade vs. Pressão Arterial",
+       x="Idade",
+       y="Pressão Arterial",
+       color="Previsão") +
+  theme_minimal()
+```
+
+```{r}
+# plotar a dispersão de doença cardíaca vs. idade
+ggplot(test_set, aes(x=Age, y=Heart.Disease, color=Prediction)) +
+  geom_point(alpha=0.7) +
+  labs(title="Dispersão de Idade vs. Doença Cardíaca",
+       x="Idade",
+       y="Doença Cardíaca",
+       color="Previsão") +
+  theme_minimal()
+
+```
