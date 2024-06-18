@@ -1,0 +1,290 @@
+---
+title: "EDA_Heart_Disease"
+author: "Vinícius césar"
+date: "2024-06-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(lubridate, ggplot2, dplyr, readr, prettydoc, maps, janitor, stringr, tidyr, magrittr, ggcorrplot)
+```
+
+```{r}
+df <- Exploratory_heart
+# Visualizar as primeiras linhas do dataframe
+summary(df)
+
+```
+
+```{r}
+# Renomear as colunas para nomes mais limpos
+df <- df %>%
+  clean_names()
+```
+
+```{r}
+# Tratar valores ausentes
+df <- df %>%
+  mutate(across(where(is.numeric), ~replace_na(., median(., na.rm = TRUE))))
+```
+
+```{r}
+
+# Verificar se há duplicatas e removê-las
+df <- df %>%
+  distinct()
+```
+
+```{r}
+str(df)
+```
+
+```{r}
+
+ggplot(df, aes(x = age)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
+  labs(title = "Distribuição de Idade dos Pacientes", x = "Idade", y = "Frequência")
+```
+
+```{r}
+
+ggplot(df, aes(x = tot_chol)) +
+  geom_histogram(binwidth = 10, fill = "coral", color = "black") +
+  labs(title = "Distribuição de Colesterol Total", x = "Colesterol Total", y = "Frequência")
+```
+
+```{r}
+
+ggplot(df, aes(x = sys_bp)) +
+  geom_histogram(binwidth = 5, fill = "lightgreen", color = "black") +
+  labs(title = "Distribuição de Pressão Arterial Sistólica", x = "Pressão Arterial Sistólica", y = "Frequência")
+```
+
+```{r}
+
+ggplot(df, aes(x = bmi)) +
+  geom_histogram(binwidth = 1, fill = "lightpink", color = "black") +
+  labs(title = "Distribuição de IMC", x = "IMC", y = "Frequência")
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(ten_year_chd), y = age, fill = as.factor(ten_year_chd))) +
+  geom_boxplot() +
+  labs(title = "Comparação de Idade entre Pacientes com e sem Doença Cardíaca", x = "Doença Cardíaca em 10 anos", y = "Idade") +
+  scale_fill_discrete(name = "Doença Cardíaca", labels = c("Não", "Sim"))
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(ten_year_chd), y = tot_chol, fill = as.factor(ten_year_chd))) +
+  geom_boxplot() +
+  labs(title = "Colesterol Total entre Pacientes com e sem Doença Cardíaca", x = "Doença Cardíaca em 10 anos", y = "Colesterol Total") +
+  scale_fill_discrete(name = "Doença Cardíaca", labels = c("Não", "Sim"))
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(ten_year_chd), y = sys_bp, fill = as.factor(ten_year_chd))) +
+  geom_boxplot() +
+  labs(title = "Pressão Arterial Sistólica entre Pacientes com e sem Doença Cardíaca", x = "Doença Cardíaca em 10 anos", y = "Pressão Arterial Sistólica") +
+  scale_fill_discrete(name = "Doença Cardíaca", labels = c("Não", "Sim"))
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(ten_year_chd), y = bmi, fill = as.factor(ten_year_chd))) +
+  geom_boxplot() +
+  labs(title = "IMC entre Pacientes com e sem Doença Cardíaca", x = "Doença Cardíaca em 10 anos", y = "IMC") +
+  scale_fill_discrete(name = "Doença Cardíaca", labels = c("Não", "Sim"))
+
+```
+
+```{r}
+
+numeric_vars <- df %>%
+  select(age, cigs_per_day, tot_chol, sys_bp, dia_bp, bmi, heart_rate, glucose)
+
+correlation_matrix <- cor(numeric_vars, use = "complete.obs")
+correlation_matrix
+
+ggcorrplot(correlation_matrix, method = "square", type = "lower", lab = TRUE)
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(male))) +
+  geom_bar(fill = "lightblue", color = "black") +
+  labs(title = "Distribuição de Sexo dos Pacientes", x = "Sexo", y = "Frequência") +
+  scale_x_discrete(labels = c("Feminino", "Masculino"))
+
+```
+
+```{r}
+
+
+ggplot(df, aes(x = as.factor(current_smoker))) +
+  geom_bar(fill = "lightgreen", color = "black") +
+  labs(title = "Distribuição de Fumantes Atuais", x = "Fumante Atual", y = "Frequência") +
+  scale_x_discrete(labels = c("Não", "Sim"))
+
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(prevalent_hyp))) +
+  geom_bar(fill = "lightcoral", color = "black") +
+  labs(title = "Distribuição de Hipertensão Prevalente", x = "Hipertensão Prevalente", y = "Frequência") +
+  scale_x_discrete(labels = c("Não", "Sim"))
+
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(diabetes))) +
+  geom_bar(fill = "lightpink", color = "black") +
+  labs(title = "Distribuição de Diabetes", x = "Diabetes", y = "Frequência") +
+  scale_x_discrete(labels = c("Não", "Sim"))
+```
+
+```{r}
+
+ggplot(df, aes(x = as.factor(current_smoker), y = tot_chol, fill = as.factor(current_smoker))) +
+  geom_violin(trim = FALSE) +
+  labs(title = "Colesterol Total entre Fumantes e Não Fumantes", x = "Fumante Atual", y = "Colesterol Total") +
+  scale_fill_discrete(name = "Fumante Atual", labels = c("Não", "Sim"))
+
+```
+
+```{r}
+
+ggplot(df, aes(x = sys_bp, fill = as.factor(current_smoker))) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Pressão Arterial Sistólica entre Fumantes e Não Fumantes", x = "Pressão Arterial Sistólica", y = "Densidade") +
+  scale_fill_discrete(name = "Fumante Atual", labels = c("Não", "Sim"))
+
+```
+
+```{r}
+
+
+ggplot(df, aes(x = as.factor(current_smoker), y = bmi, fill = as.factor(current_smoker))) +
+  geom_boxplot() +
+  labs(title = "IMC entre Fumantes e Não Fumantes", x = "Fumante Atual", y = "IMC") +
+  scale_fill_discrete(name = "Fumante Atual", labels = c("Não", "Sim"))
+
+```
+
+```{r}
+
+
+ggplot(df, aes(x = as.factor(current_smoker), y = bmi, fill = as.factor(current_smoker))) +
+  geom_violin(trim = FALSE) +
+  labs(title = "IMC entre Fumantes e Não Fumantes", x = "Fumante Atual", y = "IMC") +
+  scale_fill_discrete(name = "Fumante Atual", labels = c("Não", "Sim"))
+```
+
+```{r}
+
+ggplot(df, aes(x = tot_chol, y = sys_bp, color = as.factor(ten_year_chd))) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Colesterol Total vs. Pressão Arterial Sistólica", x = "Colesterol Total", y = "Pressão Arterial Sistólica") +
+  scale_color_manual(values = c("0" = "green", "1" = "red"), name = "Risco de Doença Cardíaca em 10 anos")
+
+```
+
+```{r}
+
+ggplot(df, aes(x = bmi, fill = as.factor(current_smoker))) +
+  geom_density(alpha = 0.7, color = "black") +
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "orange"), name = "Fumante Atual", labels = c("Não", "Sim")) +
+  labs(title = "IMC entre Fumantes e Não Fumantes", x = "IMC", y = "Densidade") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 14),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+```
+
+```{r}
+ggplot(df, aes(x = age, y = sys_bp)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Dispersão de Idade vs. Pressão Arterial Sistólica", x = "Idade", y = "Pressão Arterial Sistólica")
+
+```
+
+```{r}
+#Regressão Logística
+ggplot(df, aes(x = age, y = as.numeric(ten_year_chd))) +
+  geom_point(alpha = 0.5, position = position_jitter(width = 0.1, height = 0.1)) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = TRUE, color = "blue") +
+  labs(title = "Idade vs. Risco de Doença Cardíaca em 10 anos", x = "Idade", y = "Probabilidade de Risco de Doença Cardíaca")
+
+```
+
+```{r}
+#Área Empilhada
+df %>%
+  group_by(age) %>%
+  summarise(smokers = sum(current_smoker == 1), non_smokers = sum(current_smoker == 0)) %>%
+  gather(key = "group", value = "count", -age) %>%
+  ggplot(aes(x = age, y = count, fill = group)) +
+  geom_area(position = "stack") +
+  labs(title = "Distribuição Empilhada de Fumantes e Não Fumantes por Idade", x = "Idade", y = "Contagem", fill = "Grupo")
+
+```
+
+```{r}
+# Preparar os dados para o  de calor
+heatmap_data <- df %>%
+  mutate(age_group = cut(age, breaks = seq(30, 70, by = 5), right = FALSE)) %>%
+  group_by(age_group, male) %>%
+  summarise(mean_tot_chol = mean(tot_chol, na.rm = TRUE)) %>%
+  ungroup()
+
+#  de Calor 
+ggplot(heatmap_data, aes(x = age_group, y = as.factor(male), fill = mean_tot_chol)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightyellow", high = "red", name = "Média de Colesterol") +
+  labs(title = "Média de Colesterol por Faixa Etária e Sexo", x = "Faixa Etária", y = "Sexo") +
+  scale_y_discrete(labels = c("Feminino", "Masculino")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 12),
+        plot.title = element_text(size = 14, face = "bold"),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10))
+```
+
+```{r}
+#Boxplot com Overlay de Densidade
+ggplot(df, aes(x = as.factor(ten_year_chd), y = bmi, fill = as.factor(ten_year_chd))) +
+  geom_boxplot(alpha = 0.6) +
+  geom_density(alpha = 0.2, aes(y = ..scaled.. * 50)) +  # Overlay de densidade
+  labs(title = "Distribuição do IMC por Risco de Doença Cardíaca em 10 anos", x = "Risco de Doença Cardíaca", y = "IMC") +
+  scale_fill_manual(values = c("0" = "lightgreen", "1" = "red"), name = "Risco de Doença Cardíaca")
+
+```
+
+```{r}
+
+# Definir o caminho onde o arquivo CSV será salvo
+file_path <- "C:/Users/chica/OneDrive/Área de Trabalho/Heart Disease Archives/Exploratory_heart.csv"
+
+# Salvar o dataframe no arquivo CSV
+write.csv(Exploratory_heart, file_path, row.names = FALSE)
+
+# Mensagem de confirmação
+cat("Dataframe 'Exploratory_heart' salvo com sucesso em:", file_path)
+
+
+```
